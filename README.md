@@ -5,7 +5,7 @@
 Assuming you have a working Go environment:
 
 ```shell
-go get github.com/porty/ddcli
+go get -u github.com/porty/ddcli
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ go get github.com/porty/ddcli
 To export all Datadog items to directory `outputdir`:
 
 ```shell
-ddcli outputdir
+ddcli export outputdir
 ```
 
 # Misc
