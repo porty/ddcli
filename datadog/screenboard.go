@@ -1,6 +1,14 @@
-package models
+package datadog
 
-import "time"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"path"
+	"strconv"
+	"time"
+)
 
 type ScreenboardSummary struct {
 	ID       int       `json:"id"`
@@ -51,4 +59,23 @@ type Screenboard struct {
 		Type       string `json:"type"`
 		Legend     bool   `json:"legend"`
 	} `json:"widgets"`
+}
+
+func (s ScreenboardSummary) Download(api *API, outputDir string) error {
+	screenboard, err := api.GetScreenboard(s.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get screenboard #%d: %s", s.ID, err.Error())
+	}
+	dest := path.Join(outputDir, "screenboards", strconv.Itoa(s.ID)+".json")
+	b, err := json.MarshalIndent(screenboard, "", "  ")
+	if err != nil {
+		return errors.New("failed to JSON marshal screenboard: " + err.Error())
+	}
+	if b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+	if err = ioutil.WriteFile(dest, b, 0664); err != nil {
+		return fmt.Errorf("failed to write to file '%s': %s", dest, err.Error())
+	}
+	return nil
 }

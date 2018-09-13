@@ -1,6 +1,13 @@
-package models
+package datadog
 
-import "time"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"path"
+	"time"
+)
 
 type DashboardSummary struct {
 	ID          string    `json:"id"`
@@ -34,4 +41,23 @@ type Dashboard struct {
 		Prefix  string `json:"prefix"`
 		Name    string `json:"name"`
 	} `json:"template_variables"`
+}
+
+func (d DashboardSummary) Download(api *API, outputDir string) error {
+	dash, err := api.GetDashboard(d.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get dashboard #%s: %s", d.ID, err.Error())
+	}
+	dest := path.Join(outputDir, "dashboards", d.ID+".json")
+	b, err := json.MarshalIndent(dash, "", "  ")
+	if err != nil {
+		return errors.New("failed to JSON marshal dashboard: " + err.Error())
+	}
+	if b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+	if err = ioutil.WriteFile(dest, b, 0664); err != nil {
+		return fmt.Errorf("failed to write to file '%s': %s", dest, err.Error())
+	}
+	return nil
 }
