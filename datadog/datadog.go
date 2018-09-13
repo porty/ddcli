@@ -1,7 +1,6 @@
-package main
+package datadog
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,17 +8,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/porty/ddcli/models"
 )
 
-type DatadogAPI struct {
-	apiKey string
-	appKey string
+type API struct {
+	apiKey  string
+	appKey  string
+	baseURL string
 }
 
-func (dd DatadogAPI) GetDashboards() ([]models.DashboardSummary, error) {
-	req, err := dd.newRequest("GET", "/api/v1/dash", nil)
+func New(apiKey string, appKey string) *API {
+	return &API{
+		apiKey:  apiKey,
+		appKey:  appKey,
+		baseURL: "https://app.datadoghq.com",
+	}
+}
+
+func (d API) GetDashboards() ([]DashboardSummary, error) {
+	req, err := d.newRequest("GET", "/api/v1/dash", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +49,7 @@ func (dd DatadogAPI) GetDashboards() ([]models.DashboardSummary, error) {
 	}
 
 	dashes := struct {
-		Dashes []models.DashboardSummary `json:"dashes"`
+		Dashes []DashboardSummary `json:"dashes"`
 	}{}
 
 	err = json.Unmarshal(b, &dashes)
@@ -54,8 +60,8 @@ func (dd DatadogAPI) GetDashboards() ([]models.DashboardSummary, error) {
 	return dashes.Dashes, nil
 }
 
-func (dd DatadogAPI) GetDashboard(id string) (*models.Dashboard, error) {
-	req, err := dd.newRequest("GET", "/api/v1/dash/"+id, nil)
+func (d API) GetDashboard(id string) (*Dashboard, error) {
+	req, err := d.newRequest("GET", "/api/v1/dash/"+id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +85,9 @@ func (dd DatadogAPI) GetDashboard(id string) (*models.Dashboard, error) {
 	}
 
 	respObj := struct {
-		Dash     models.Dashboard `json:"dash"`
-		URL      string           `json:"url"`
-		Resource string           `json:"resource"`
+		Dash     Dashboard `json:"dash"`
+		URL      string    `json:"url"`
+		Resource string    `json:"resource"`
 	}{}
 
 	err = json.Unmarshal(b, &respObj)
@@ -92,8 +98,8 @@ func (dd DatadogAPI) GetDashboard(id string) (*models.Dashboard, error) {
 	return &respObj.Dash, nil
 }
 
-func (dd DatadogAPI) GetScreenboards() ([]models.ScreenboardSummary, error) {
-	req, err := dd.newRequest("GET", "/api/v1/screen", nil)
+func (d API) GetScreenboards() ([]ScreenboardSummary, error) {
+	req, err := d.newRequest("GET", "/api/v1/screen", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +123,7 @@ func (dd DatadogAPI) GetScreenboards() ([]models.ScreenboardSummary, error) {
 	}
 
 	screens := struct {
-		Screenboards []models.ScreenboardSummary `json:"screenboards"`
+		Screenboards []ScreenboardSummary `json:"screenboards"`
 	}{}
 
 	err = json.Unmarshal(b, &screens)
@@ -128,8 +134,8 @@ func (dd DatadogAPI) GetScreenboards() ([]models.ScreenboardSummary, error) {
 	return screens.Screenboards, nil
 }
 
-func (dd DatadogAPI) GetScreenboard(id int) (*models.Screenboard, error) {
-	req, err := dd.newRequest("GET", fmt.Sprintf("/api/v1/screen/%d", id), nil)
+func (d API) GetScreenboard(id int) (*Screenboard, error) {
+	req, err := d.newRequest("GET", fmt.Sprintf("/api/v1/screen/%d", id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +158,7 @@ func (dd DatadogAPI) GetScreenboard(id int) (*models.Screenboard, error) {
 		return nil, errors.New("Failed to read response body: " + err.Error())
 	}
 
-	screenboard := new(models.Screenboard)
+	screenboard := new(Screenboard)
 	err = json.Unmarshal(b, screenboard)
 	if err != nil {
 		return nil, errors.New("Failed to unmarshal JSON: " + err.Error())
@@ -161,8 +167,8 @@ func (dd DatadogAPI) GetScreenboard(id int) (*models.Screenboard, error) {
 	return screenboard, nil
 }
 
-func (dd DatadogAPI) GetMonitors() ([]models.Monitor, error) {
-	req, err := dd.newRequest("GET", "/api/v1/monitor", nil)
+func (d API) GetMonitors() ([]Monitor, error) {
+	req, err := d.newRequest("GET", "/api/v1/monitor", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +191,7 @@ func (dd DatadogAPI) GetMonitors() ([]models.Monitor, error) {
 		return nil, errors.New("Failed to read response body: " + err.Error())
 	}
 
-	monitors := []models.Monitor{}
+	monitors := []Monitor{}
 
 	err = json.Unmarshal(b, &monitors)
 	if err != nil {
@@ -195,23 +201,14 @@ func (dd DatadogAPI) GetMonitors() ([]models.Monitor, error) {
 	return monitors, nil
 }
 
-func (dd DatadogAPI) newRequest(method string, endpoint string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, "https://app.datadoghq.com"+endpoint, body)
+func (d API) newRequest(method string, endpoint string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, d.baseURL+endpoint, body)
 	if err != nil {
 		return nil, err
 	}
 	values := url.Values{}
-	values.Add("api_key", dd.apiKey)
-	values.Add("application_key", dd.appKey)
+	values.Add("api_key", d.apiKey)
+	values.Add("application_key", d.appKey)
 	req.URL.RawQuery = values.Encode()
 	return req, nil
-}
-
-func printJSON(b []byte) {
-	buf := bytes.Buffer{}
-	err := json.Indent(&buf, b, "", "  ")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(buf.String())
 }

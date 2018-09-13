@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/porty/ddcli/datadog"
 	"github.com/urfave/cli"
 )
 
@@ -31,7 +32,7 @@ func export(c *cli.Context) error {
 	screenboardDir := path.Join(outputDir, "screenboards")
 	monitorsDir := path.Join(outputDir, "monitors")
 	createDirectories(dashboardDir, screenboardDir, monitorsDir)
-	dd := DatadogAPI{apiKey, appKey}
+	dd := datadog.New(apiKey, appKey)
 
 	dashes, err := dd.GetDashboards()
 	if err != nil {

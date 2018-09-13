@@ -1,4 +1,4 @@
-package models
+package datadog
 
 import "time"
 
