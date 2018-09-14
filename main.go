@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/porty/ddcli/datadog"
 	"github.com/urfave/cli"
 )
 
@@ -14,6 +16,35 @@ func main() {
 			Name:   "export",
 			Usage:  "export Datadog config",
 			Action: export,
+		},
+		{
+			Name:  "metrics",
+			Usage: "metrics commands",
+			Subcommands: []cli.Command{
+				{
+					Name:   "active",
+					Usage:  "list active metrics from the specified duration",
+					Action: activeMetricsFromDuration,
+					Flags: []cli.Flag{
+						cli.DurationFlag{
+							Name:  "duration, d",
+							Usage: "Duration, e.g. 1hr, 2h45m",
+						},
+					},
+				},
+				{
+					Name:   "top500",
+					Usage:  "list top 500 custom metrics for the month",
+					Action: top500CustomMetrics,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "format, f",
+							Value: "csv",
+							Usage: "Format, either csv or md (markdown)",
+						},
+					},
+				},
+			},
 		},
 	}
 
