@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 )
 
 type API struct {
@@ -199,6 +201,69 @@ func (d API) GetMonitors() ([]Monitor, error) {
 	}
 
 	return monitors, nil
+}
+
+func (d API) GetMetrics(since time.Time) ([]string, error) {
+	req, err := d.newRequest(http.MethodGet, "/api/v1/metrics", nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Set("from", strconv.FormatInt(since.Unix(), 10))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("receieved status code %d attempting to get metrics", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.New("failed to read GetMetrics response: " + err.Error())
+	}
+
+	var metricsResp metricsResponse
+	if err := json.Unmarshal(b, &metricsResp); err != nil {
+		return nil, errors.New("failed to parse GetMetrics response: " + err.Error())
+	}
+	return metricsResp.Metrics, nil
+}
+
+func (d API) GetTopAverageMetrics() ([]MetricsUsage, error) {
+	req, err := d.newRequest(http.MethodGet, "/api/v1/usage/top_avg_metrics", nil)
+	if err != nil {
+		return nil, err
+	}
+	// TODO way to set month
+	q := req.URL.Query()
+	q.Set("month", time.Now().Format("2006-01"))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("receieved status code %d for GetTopAverageMetrics", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.New("failed to read GetTopAverageMetrics response: " + err.Error())
+	}
+
+	var r metricsUsageResponse
+	if err := json.Unmarshal(b, &r); err != nil {
+		return nil, errors.New("failed to parse GetTopAverageMetrics response: " + err.Error())
+	}
+	return r.Usage, nil
 }
 
 func (d API) newRequest(method string, endpoint string, body io.Reader) (*http.Request, error) {
