@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/porty/ddcli/datadog"
 	"github.com/urfave/cli"
 )
 
@@ -21,18 +20,12 @@ func export(c *cli.Context) error {
 
 	outputDir := c.Args()[0]
 
-	apiKey := os.Getenv("DD_API_KEY")
-	appKey := os.Getenv("DD_APP_KEY")
-	if apiKey == "" || appKey == "" {
-		fmt.Println("DD_API_KEY and DD_APP_KEY required")
-		os.Exit(1)
-	}
+	dd := getAPI()
 
 	dashboardDir := path.Join(outputDir, "dashboards")
 	screenboardDir := path.Join(outputDir, "screenboards")
 	monitorsDir := path.Join(outputDir, "monitors")
 	createDirectories(dashboardDir, screenboardDir, monitorsDir)
-	dd := datadog.New(apiKey, appKey)
 
 	dashes, err := dd.GetDashboards()
 	if err != nil {
